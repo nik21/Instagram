@@ -2,6 +2,7 @@
 
 namespace SocialiteProviders\Instagram;
 
+use Laravel\Socialite\Two\InvalidStateException;
 use SocialiteProviders\Manager\OAuth2\User;
 use Laravel\Socialite\Two\ProviderInterface;
 use SocialiteProviders\Manager\OAuth2\AbstractProvider;
@@ -87,7 +88,8 @@ class Provider extends AbstractProvider implements ProviderInterface
 
         $this->credentialsResponseBody = json_decode($response->getBody(), true);
 
-        return $this->parseAccessToken($response->getBody());
+//        return $this->parseAccessToken($response->getBody());
+        return $this->credentialsResponseBody;
     }
 
     /**
@@ -114,4 +116,31 @@ class Provider extends AbstractProvider implements ProviderInterface
 
         return hash_hmac('sha256', $sig, $signing_key, false);
     }
+
+
+    public function getAccessTokenResponse($code){
+        return $this->getAccessToken($code);
+    }
+
+    public function user()
+    {
+        if ($this->hasInvalidState()) {
+            throw new InvalidStateException();
+        }
+
+        $response = $this->getAccessTokenResponse($this->getCode());
+
+        $user = $this->mapUserToObject($this->getUserByToken(
+            $token = $this->parseAccessToken($response)
+        ));
+
+
+        if ($user instanceof User) {
+            $user->setAccessTokenResponseBody($this->credentialsResponseBody);
+        }
+
+        return $user->setToken($token);
+    }
+
+
 }
